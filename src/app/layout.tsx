@@ -24,11 +24,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blue-md shadow-sm z-50 flex items-center justify-between px-6">
+          <div className="flex items-center gap-4">
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition text-gray-600 active:scale-95">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <span className="text-2xl font-black tracking-wider text-blue-600 font-mono select-none">shares
+            </span>
+          </div>
+          <div className="w-8 h-8"></div>
+        </header>
+        <main className="pt-16">
+          {children}
+        </main>
       </body>
     </html>
   );
