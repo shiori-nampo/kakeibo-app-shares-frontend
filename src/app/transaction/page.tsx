@@ -1,32 +1,60 @@
 "use client"
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import { CategoryIcon } from "../components/CategoryIcon";
+import axios from "axios";
 
 const CATEGORIES = [
-  { name: "住居費", type: "fixed" },
-  { name: "光熱費", type: "fixed" },
-  { name: "通信費", type: "fixed" },
-  { name: "保険料", type: "fixed" },
-  { name: "税金", type: "fixed" },
-  { name: "食費", type: "variable" },
-  { name: "外食費", type: "variable" },
-  { name: "日用品", type: "variable" },
-  { name: "交通費", type: "variable" },
-  { name: "趣味", type: "variable" },
-  { name: "交際費", type: "variable" },
-  { name: "ショッピング", type: "variable" },
-  { name: "医療費", type: "variable" },
-  { name: "キッズ", type: "variable" },
-  { name: "特別費", type: "variable" },
+  { id: 1, name: "住居費", type: "fixed" },
+  { id: 2, name: "光熱費", type: "fixed" },
+  { id: 3, name: "通信費", type: "fixed" },
+  { id: 4, name: "保険料", type: "fixed" },
+  { id: 5, name: "税金", type: "fixed" },
+  { id: 6, name: "食費", type: "variable" },
+  { id: 7, name: "外食費", type: "variable" },
+  { id: 8, name: "日用品", type: "variable" },
+  { id: 9, name: "交通費", type: "variable" },
+  { id: 10, name: "趣味", type: "variable" },
+  { id: 11, name: "交際費", type: "variable" },
+  { id: 12, name: "ショッピング", type: "variable" },
+  { id: 13, name: "医療費", type: "variable" },
+  { id: 14, name: "キッズ", type: "variable" },
+  { id: 15, name: "特別費", type: "variable" },
+
+  { id: 16, name: "給与", type: "income" },
+  { id: 17, name: "賞与", type: "income" },
+  { id: 18, name: "副収入", type: "income" },
+  { id: 19, name: "お小遣い", type: "income" },
+  { id: 20, name: "その他", type: "income" },
 ];
+
 
 export default function TransactionInputPage() {
   const [type, setType] = useState<"支出" | "収入">("支出");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [memo, setMemo] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("食費");
+
+  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[5]);
+
+  const filteredCategories = CATEGORIES.filter((cat) => {
+    if (type === "支出") {
+      return cat.type === "fixed" || cat.type === "variable";
+    } else {
+      return cat.type === "income";
+    }
+  });
+
+
+  useEffect(() => {
+    if (type === "支出") {
+      const defaultExpense = CATEGORIES.find(c => c.name === "食費");
+      if (defaultExpense) setSelectedCategory(defaultExpense);
+    } else {
+      const defaultIncome = CATEGORIES.find(c => c.name === "給与");
+      if (defaultIncome) setSelectedCategory(defaultIncome);
+    }
+  }, [type]);
 
   const changeDate = (days: number) => {
     const current = new Date(date);
@@ -34,9 +62,43 @@ export default function TransactionInputPage() {
     setDate(current.toISOString().split("T")[0]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleTypeChange = (e: React.MouseEvent, newType: "支出" | "収入") => {
     e.preventDefault();
-    alert(`[登録しました!]\nタイプ: ${type}\n日付: ${date}\n金額: ${amount}円\nカテゴリ: ${selectedCategory}\nメモ: ${memo}`);
+    setType(newType);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const submitData = {
+        date: date,
+        type: type === "支出" ? "expense" : "income",
+        amount: Number(amount),
+        category_id: selectedCategory.id,
+        memo: memo,
+        scope: "shared"
+      };
+
+      const response = await axios.post("http://localhost:8002/api/transactions", submitData, {
+        withCredentials: true,
+      });
+
+      console.log("Laravelへの登録に成功しました:", response.data);
+      alert("データを登録しました!");
+
+      setMemo("");
+      setAmount("");
+
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error("❌ 送信エラー詳細:", error.response?.data || error.message);
+        alert(`登録に失敗しました: ${error.response?.data.message || "サーバーエラー"}`);
+      } else {
+        console.error("❌ 予期せぬエラー:", error);
+        alert("エラーが発生しました");
+      }
+    }
   };
 
   return (
@@ -45,13 +107,13 @@ export default function TransactionInputPage() {
           <div className="flex bg-gray-100 p-1 rounded-2xl">
           <button
             type="button"
-            onClick={() => setType("支出")}
+            onClick={(e) => handleTypeChange(e, "支出")}
             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${type === "支出" ? "bg-red-500 text-white shadow-md" : "text-gray-500 hover:text-gray-700"}`}>
             支出
           </button>
           <button
             type="button"
-            onClick={() => setType("収入")}
+            onClick={(e) => handleTypeChange(e,"収入")}
             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${type === "収入" ? "bg-green-500 text-white shadow-md" : "text-gray-500 hover:text-gray-700"}`}
           >収入
           </button>
@@ -91,13 +153,13 @@ export default function TransactionInputPage() {
       <div>
             <label className="block text-xs font-bold text-gray-400 mb-2">カテゴリー</label>
             <div className="grid grid-cols-5 gap-2">
-              {CATEGORIES.map((cat) => {
-                const isSelected = selectedCategory === cat.name;
+              {filteredCategories.map((cat) => {
+                const isSelected = selectedCategory.id === cat.id;
                 return (
                   <button
-                    key={cat.name}
+                    key={cat.id}
                     type="button"
-                    onClick={() => setSelectedCategory(cat.name)}
+                    onClick={() => setSelectedCategory(cat)}
                     className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all border ${
                       isSelected
                         ? "bg-blue-50 border-blue-500 shadow-sm scale-105"

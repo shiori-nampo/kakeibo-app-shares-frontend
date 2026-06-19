@@ -13,6 +13,19 @@ export default function DetailHeader({
   weekDisplay,
   onChangeDate,
 }: HeaderProps) {
+
+  const getWeekdayStr = (dateStr: string) => {
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    const dayIndex = new Date(dateStr).getDay();
+    return weekdays[dayIndex];
+  };
+
+  const currentYear = new Date(date).getFullYear();
+  const currentMonth = new Date(date).getMonth() + 1;
+  const currentDay = new Date(date).getDate();
+  const currentWeekday = getWeekdayStr(date);
+
+
   return (
     <div className="bg-white p-4 rounded-3xl shadow-xl flex flex-col gap-4 w-full">
 
@@ -26,9 +39,9 @@ export default function DetailHeader({
 
         <h2 className="text-lg font-black text-gray-700">
           {viewMode === "day" ? (
-            `${new Date(date).getFullYear()}/ ${new Date(date).getMonth() + 1}/ ${new Date(date).getDate()}`
+            `${currentYear}/ ${currentMonth}/ ${currentDay} (${currentWeekday})`
           ) : (
-            `${new Date(date).getFullYear()}/  ${weekDisplay}`
+            `${currentYear}/ ${weekDisplay} (月〜日)`
           )}
         </h2>
 

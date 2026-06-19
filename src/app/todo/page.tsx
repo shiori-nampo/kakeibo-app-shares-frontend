@@ -1,41 +1,133 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TodoItem from "./TodoItem";
+import axios from "axios";
 
-const INITIAL_TODOS = [
-  { id: 1, text: "今月の家賃を振り込む", completed: false },
-  { id: 2, text: "スーパーで牛乳と卵を買う", completed: true },
-];
+
+type TodoType = {
+  id: number;
+  title: string;
+  is_completed: boolean;
+};
 
 export default function TodoPage() {
-  const [todos, setTodos] = useState(INITIAL_TODOS);
+  const [todos, setTodos] = useState<TodoType[]>([]);
   const [inputText, setInputText] = useState("");
 
-  const addTodo = (e: React.FormEvent) => {
+
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  const fetchTodos = async () => {
+    try {
+      const response = await axios.get('http://localhost:8002/api/todo', {
+        withCredentials: true,
+      });
+
+      const incomingData = response.data.data || response.data;
+      setTodos(Array.isArray(incomingData) ? incomingData : []);
+
+    } catch (error) {
+      console.error("Todoの取得に失敗しました", error);
+      setTodos([]);
+    }
+  };
+
+  const addTodo = async (e: React.FormEvent) => {
     e.preventDefault(); //ページが勝手にリロードされない魔法
     if (!inputText.trim()) return;//入力欄が空っぽなら何もしない
+    try {
+      await axios.get('http://localhost:8002/sanctum/csrf-cookie', { withCredentials: true });
 
-    const newTodo = {
-      id: Date.now(), //被らないID作成のため現在の時間をIDにする
-      text: inputText,
-      completed: false,
-    };
+      const xsrfToken =
+      decodeURIComponent(
+      document.cookie
+      .split("; ")
+      .find(row => row.startsWith("XSRF-TOKEN="))
+      ?.split("=")[1] || ""
+  );
 
-    setTodos([...todos, newTodo]); //今までのリストの末尾に新しいTodoを繋げる
-    setInputText("");
+      const response = await axios.post("http://localhost:8002/api/todo", {
+        title: inputText,
+      }, {
+        withCredentials: true,
+        headers: {
+          Accept: "application/json",
+          "X-XSRF-TOKEN": xsrfToken,
+        },
+       });
+
+      setTodos([...todos, response.data]);
+      setInputText("");
+      console.log("Todoを追加しました");
+    } catch (error) {
+      console.error("追加に失敗しました", error);
+    }
   };
 
-  const toggleTodo = (id: number) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
+  const toggleTodo = async (id: number) => {
+    const currentTodo = todos.find(todo => todo.id === id);
+    if (!currentTodo) return;
+
+    try {
+      await axios.get('http://localhost:8002/sanctum/csrf-cookie', { withCredentials: true });
+
+      const xsrfToken =
+        decodeURIComponent(
+          document.cookie
+          .split("; ")
+          .find(row => row.startsWith("XSRF-TOKEN="))
+      ?.split("=")[1] || ""
+        );
+
+      await axios.patch(`http://localhost:8002/api/todo/${id}`, {
+        is_completed: !currentTodo.is_completed
+      }, {
+        withCredentials: true,
+        headers: {
+          Accept: "application/json",
+          "X-XSRF-TOKEN": xsrfToken,
+        },
+       });
+
+      setTodos(
+        todos.map((todo) =>
+          todo.id === id ? { ...todo, is_completed: !todo.is_completed } : todo
+        )
+      );
+    } catch (error) {
+      console.error("更新に失敗しました:", error);
+    }
   };
 
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter((todo) => todo.id != id));
+  const deleteTodo = async (id: number) => {
+
+    try {
+      await axios.get('http://localhost:8002/sanctum/csrf-cookie', { withCredentials: true });
+
+      const xsrfToken =
+        decodeURIComponent(
+          document.cookie
+            .split("; ")
+            .find(row => row.startsWith("XSRF-TOKEN="))
+            ?.split("=")[1] || ""
+        );
+
+      await axios.delete(`http://localhost:8002/api/todo/${id}`, {
+        withCredentials: true,
+        headers: {
+          Accept: "application/json",
+          "X-XSRF-TOKEN": xsrfToken,
+        },
+      });
+
+      setTodos(todos.filter((todo) => todo.id !== id));
+      console.log("削除しました");
+    } catch (error) {
+      console.error("削除に失敗しました:", error);
+    }
   };
 
   return (
@@ -64,7 +156,7 @@ export default function TodoPage() {
         </form>
 
         <div className="flex flex-col gap-2.5">
-          {todos.length === 0 ? (
+          {todos?.length === 0 ? (
             <p className="text-center py-8 text-sm font-bold text-gray-400">やることは全部終わりました！✨</p>
           ) : (
             todos.map((todo) => (

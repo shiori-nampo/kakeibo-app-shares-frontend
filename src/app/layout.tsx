@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";//開閉スイッチの魔法のインポート
+import "../globals.css";
+import { useState, useEffect } from "react";//開閉スイッチの魔法のインポート、ログイン状態を確認するためuseEffect
 import Link from "next/link";//画面を切り替えるためのリンク機能
-import type { Metadata } from "next";
+import axios from "axios";
 import localFont from "next/font/local";
-import "./globals.css";
+import { useRouter, usePathname } from "next/navigation";
+
+
+
+
+axios.defaults.withCredentials = true;
+axios.defaults.xsrfCookieName = "XSRF-TOKEN";
+axios.defaults.xsrfHeaderName = "X-XSRF-TOKEN";
+
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -24,22 +33,108 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
 
-  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  const MENU_ITEMS = [
-    { name: "🗓️カレンダー表示", href: "/transaction/calendar" },
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+
+      if (pathname === "/login" || pathname === "/register") {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await axios.get("http://localhost:8002/api/user", { withCredentials: true });
+        setIsLoggedIn(true);
+        localStorage.setItem("is_logged_in", "true");
+      } catch (error) {
+
+        if (axios.isAxiosError(error)) {
+          console.error("ログインチェック失敗:", error.response?.data);
+        }
+
+        setIsLoggedIn(false);
+        localStorage.removeItem("is_logged_in");
+
+        if (pathname.startsWith("/transaction") || pathname === "/todo" || pathname === "/shopping") {
+          alert("ログインが必要です。");
+          router.push("/login");
+        }
+
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkLoginStatus();
+
+  }, [pathname, router]);
+
+  const handleLogout = async () => {
+    console.log(document.cookie);
+
+    try {
+
+      await axios.get(
+        "http://localhost:8002/sanctum/csrf-cookie",
+        { withCredentials: true }
+      );
+
+      const token = decodeURIComponent(
+        document.cookie
+          .split(";")
+          .find(row => row.startsWith("XSRF-TOKEN="))
+          ?.split("=")[1] || ""
+      );
+
+      console.log(token);
+
+      await axios.post("http://localhost:8002/logout", {}, {
+        withCredentials: true,
+        headers: {
+          "X-XSRF-TOKEN": token,
+        },
+      }
+      );
+      alert("ログアウトしました");
+      router.push("/login");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error("ログアウトエラー:", error.response?.data);
+      }
+      alert("ログアウトに失敗しました。")
+    }
+  };
+
+
+  const USER_MENU_ITEMS = [
+    { name: "📊一覧表示", href: "/transaction/list" },
     { name: "💰収支登録", href: "/transaction" },
-    { name: "📊一覧表示", href: "transaction/list" },
+    { name: "🗓️カレンダー表示", href: "/transaction/calendar" },
     { name: "📝TodoList", href: "/todo" },
     { name: "🛒買い物List", href: "/shopping" },
   ];
+
+
+  const GUEST_MENU_ITEMS = [
+    { name: "ログインする", href: "/login" },
+    { name: "新規ユーザー登録", href: "/register" },
+  ];
+
+  const currentMenuItems = isLoggedIn ? USER_MENU_ITEMS : GUEST_MENU_ITEMS;
+
 
   return (
     <html lang="ja">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blue-md shadow-sm z-50 flex items-center justify-between px-6">
+          <header className="fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blue-md shadow-sm z-50 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -74,7 +169,7 @@ export default function RootLayout({
             </div>
 
             <nav className="flex flex-col gap-2">
-              {MENU_ITEMS.map((item) => (
+              {currentMenuItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -87,19 +182,25 @@ export default function RootLayout({
             </nav>
           </div>
 
-          <button
-            onClick={() => {
-              alert("ログアウト処理（ここにFortifyのログアウト魔法を入れます）");
-              setIsOpen(false);
-            }}
-            className="w-full text-left text-sm font-bold text-red-500 hover:bg-red-50 px-3 py-2.5 rounded-xl transition-all mt-auto"
+          {isLoggedIn && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                handleLogout();
+              }}
+              className="w-full text-left text-sm font-bold text-red-500 hover:bg-red-50 px-3 py-2.5 rounded-xl transition-all mt-auto"
           >
             🚪 ログアウト
           </button>
+          )}
         </div>
 
-        <main className="pt-16">
-          {children}
+          <main className="pt-16">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-[calc(100vh-4rem)] text-gray-500 font-bold">
+              読み込み中...
+            </div>
+            ) : (children)}
         </main>
       </body>
     </html>

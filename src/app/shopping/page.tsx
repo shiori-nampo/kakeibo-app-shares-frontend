@@ -1,43 +1,147 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import ShoppingItem from "./ShoppingItem";
+import axios from 'axios';
 
-
-const INITIAL_ITEMS = [
-  { id: 1, text: "牛乳", completed: false },
-  { id: 2, text: "卵", completed: true },
-];
+type ShoppingItemType = {
+  id: number;
+  title: string;
+  is_completed: boolean;
+};
 
 
 export default function ShoppingItemPage() {
-  const [items, setItems] = useState(INITIAL_ITEMS);
+
+  const [items, setItems] = useState<ShoppingItemType[]>([]);
+
   const [inputText, setInputText] = useState("");
 
-  const addItem = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const response = await axios.get(
+        "http://localhost:8002/api/shopping",
+        {
+          withCredentials: true,
+        });
+      setItems(response.data);
+    } catch (error) {
+      console.error("データ取得失敗:", error);
+    }
+  };
+
+
+  const addItem = async (e: React.FormEvent) => {
     e.preventDefault(); //ページが勝手にリロードされない魔法
     if (!inputText.trim()) return;//入力欄が空っぽなら何もしない
 
-    const newItem = {
-      id: Date.now(),
-      text: inputText,
-      completed: false,
-    };
+    try {
 
-    setItems([...items, newItem]);
-    setInputText("");
+    await axios.get(
+  "http://localhost:8002/sanctum/csrf-cookie",
+  { withCredentials: true }
+);
+
+      const xsrfToken = decodeURIComponent(
+        document.cookie.split("; ")
+          .find(row => row.startsWith("XSRF-TOKEN="))
+          ?.split("=")[1] || ""
+      );
+
+      console.log("cookie", document.cookie);
+      console.log("xsrfToken", xsrfToken);
+
+
+
+const response = await axios.post(
+  "http://localhost:8002/api/shopping",
+  {
+    title: inputText,
+    type: "shopping",
+  },
+  {
+    withCredentials: true,
+    headers: {
+      Accept: "application/json",
+      "X-XSRF-TOKEN": xsrfToken,
+    },
+  }
+);
+      setItems([...items, response.data.data]);
+      setInputText("");
+      console.log("LaravelのDBに追加保存しました");
+    } catch (error) {
+      console.error("追加に失敗しました:", error);
+    }
   };
 
-  const toggleItem = (id: number) => {
-    setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
+  const toggleItem = async (id: number) => {
+    const currentItem = items.find(item => item.id === id);
+    if (!currentItem) return;
+
+    try {
+
+      await axios.get('http://localhost:8002/sanctum/csrf-cookie', { withCredentials: true });
+
+      const xsrfToken =
+        decodeURIComponent(
+          document.cookie.split(";")
+            .find(row => row.startsWith("XSRF-TOKEN="))
+            ?.split("=")[1] || ""
+        );
+
+      await axios.patch(`http://localhost:8002/api/shopping/${id}`, {
+        is_completed: !currentItem.is_completed
+      }, {
+        withCredentials: true,
+        headers: {
+          Accept: "application/json",
+          "X-XSRF-TOKEN": xsrfToken,
+        },
+      }
+      );
+
+      setItems(
+        items.map((item) =>
+          item.id === id ? { ...item, is_completed: !item.is_completed } : item
+        )
+      );
+      console.log("チェック状態を更新しました");
+    } catch (error) {
+      console.error("更新に失敗しました:", error);
+    }
   };
 
-  const deleteItem = (id: number) => {
-    setItems(items.filter((item) => item.id != id));
+  const deleteItem = async (id: number) => {
+
+    try {
+      await axios.get('http://localhost:8002/sanctum/csrf-cookie', { withCredentials: true });
+
+      const xsrfToken =
+        decodeURIComponent(
+          document.cookie.split(";")
+            .find(row => row.startsWith("XSRF-TOKEN="))
+            ?.split("=")[1] || ""
+        );
+
+      await axios.delete(`http://localhost:8002/api/shopping/${id}`, {
+        withCredentials: true,
+        headers: {
+          Accept: "application/json",
+          "X-XSRF-TOKEN": xsrfToken,
+        },
+      }
+      );
+
+      setItems(items.filter((item) => item.id !== id));
+      console.log("DBから削除しました");
+    } catch (error) {
+      console.error("削除に失敗しました", error);
+    }
   };
 
   return (
