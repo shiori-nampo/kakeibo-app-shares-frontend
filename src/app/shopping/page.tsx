@@ -150,7 +150,7 @@ const response = await axios.post(
 
         <div className="text-center">
           <h1 className="text-2xl font-black text-gray-700 tracking-wider">🛒 SHOPPING LIST</h1>
-          <p className="text-xs text-gray-400 mt-1">お買い物リスト</p>
+          <p className="text-xs text-gray-400 mt-1">Shoppingリスト</p>
         </div>
 
         <form onSubmit={addItem} className="flex gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-200">

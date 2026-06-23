@@ -117,7 +117,7 @@ export default function RootLayout({
     { name: "💰収支登録", href: "/transaction" },
     { name: "🗓️カレンダー表示", href: "/transaction/calendar" },
     { name: "📝TodoList", href: "/todo" },
-    { name: "🛒買い物List", href: "/shopping" },
+    { name: "🛒ShoppingList", href: "/shopping" },
   ];
 
 
@@ -173,7 +173,7 @@ export default function RootLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setIsOpen(false)} // 💡 リンクを押したらメニューを閉じる
+                  onClick={() => setIsOpen(false)}
                   className="text-sm font-bold text-gray-600 hover:text-green-500 hover:bg-green-50 px-3 py-2.5 rounded-xl transition-all"
                 >
                   {item.name}
