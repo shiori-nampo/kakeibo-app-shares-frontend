@@ -1,7 +1,15 @@
 "use client";
 
+
+type UserType = {
+  id: number;
+  name: string;
+};
+
+
+
 type ShoppingItemProps = {
-  item: { id: number; title: string; is_completed: boolean };
+  item: { id: number; title: string; is_completed: boolean; completed_user?: UserType | null; };
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
 };
@@ -9,7 +17,7 @@ type ShoppingItemProps = {
 
 export default function ShoppingItem({ item, onToggle, onDelete}: ShoppingItemProps) {
   return (
-    <div className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${item.is_completed ? "bg-gray-50 border-gray-100 text-gray-400 line-through" : "bg-white border-gray-200 shadow-sm text-gray-700"
+    <div className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all ${item.is_completed ? "bg-gray-50 border-gray-100 text-gray-400" : "bg-white border-gray-200 shadow-sm text-gray-700"
       }`}>
       <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => onToggle(item.id)}>
         <input
@@ -18,7 +26,13 @@ export default function ShoppingItem({ item, onToggle, onDelete}: ShoppingItemPr
           onChange={() => { }}
           className="w-5 h-5 rounded-lg text-green-500 border-gray-300 focus:ring-green-400 cursor-pointer"
         />
-        <span className="text-sm font-bold">{item.title}</span>
+        <span className={`text-sm font-bold ${item.is_completed ? "line-through text-gray-400" : ""}`}>{item.title}
+        </span>
+
+        {item.is_completed === true && item.completed_user ? (
+          <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full font-bold tracking-wider select-none">✅ {item.completed_user.name}
+          </span>
+        ) : null}
       </div>
       <button
         onClick={() => onDelete(item.id)}

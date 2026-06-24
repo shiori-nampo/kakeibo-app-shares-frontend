@@ -36,8 +36,8 @@ export default function TodoPage() {
   };
 
   const addTodo = async (e: React.FormEvent) => {
-    e.preventDefault(); //ページが勝手にリロードされない魔法
-    if (!inputText.trim()) return;//入力欄が空っぽなら何もしない
+    e.preventDefault();
+    if (!inputText.trim()) return;
     try {
       await axios.get('http://localhost:8002/sanctum/csrf-cookie', { withCredentials: true });
 
@@ -57,9 +57,10 @@ export default function TodoPage() {
           Accept: "application/json",
           "X-XSRF-TOKEN": xsrfToken,
         },
-       });
+      });
 
-      setTodos([...todos, response.data]);
+      const newTodo = response.data.data || response.data;
+      setTodos([...todos, newTodo]);
       setInputText("");
       console.log("Todoを追加しました");
     } catch (error) {
@@ -82,7 +83,7 @@ export default function TodoPage() {
       ?.split("=")[1] || ""
         );
 
-      await axios.patch(`http://localhost:8002/api/todo/${id}`, {
+      const response = await axios.patch(`http://localhost:8002/api/todo/${id}`, {
         is_completed: !currentTodo.is_completed
       }, {
         withCredentials: true,
@@ -90,12 +91,13 @@ export default function TodoPage() {
           Accept: "application/json",
           "X-XSRF-TOKEN": xsrfToken,
         },
-       });
+      });
+
+      const updatedTodo = response.data.data || response.data;
 
       setTodos(
         todos.map((todo) =>
-          todo.id === id ? { ...todo, is_completed: !todo.is_completed } : todo
-        )
+          (todo.id === id ? updatedTodo : todo))
       );
     } catch (error) {
       console.error("更新に失敗しました:", error);

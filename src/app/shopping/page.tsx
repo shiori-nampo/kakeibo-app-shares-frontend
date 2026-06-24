@@ -4,10 +4,17 @@ import { useState,useEffect } from "react";
 import ShoppingItem from "./ShoppingItem";
 import axios from 'axios';
 
+
+type UserType = {
+  id: number;
+  name: string;
+};
+
 type ShoppingItemType = {
   id: number;
   title: string;
   is_completed: boolean;
+  completed_user?: UserType | null;
 };
 
 
@@ -28,7 +35,13 @@ export default function ShoppingItemPage() {
         {
           withCredentials: true,
         });
-      setItems(response.data);
+
+      if (response.data && response.data.data) {
+        setItems(response.data.data);
+      } else {
+        setItems(Array.isArray(response.data) ? response.data : []);
+      }
+
     } catch (error) {
       console.error("データ取得失敗:", error);
     }
@@ -36,8 +49,8 @@ export default function ShoppingItemPage() {
 
 
   const addItem = async (e: React.FormEvent) => {
-    e.preventDefault(); //ページが勝手にリロードされない魔法
-    if (!inputText.trim()) return;//入力欄が空っぽなら何もしない
+    e.preventDefault();
+    if (!inputText.trim()) return;
 
     try {
 
@@ -94,7 +107,7 @@ const response = await axios.post(
             ?.split("=")[1] || ""
         );
 
-      await axios.patch(`http://localhost:8002/api/shopping/${id}`, {
+      const response = await axios.patch(`http://localhost:8002/api/shopping/${id}`, {
         is_completed: !currentItem.is_completed
       }, {
         withCredentials: true,
@@ -105,10 +118,10 @@ const response = await axios.post(
       }
       );
 
+      const updatedShopping = response.data.data || response.data;
       setItems(
         items.map((item) =>
-          item.id === id ? { ...item, is_completed: !item.is_completed } : item
-        )
+          (item.id === id ? updatedShopping : item))
       );
       console.log("チェック状態を更新しました");
     } catch (error) {
